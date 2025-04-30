@@ -6,13 +6,18 @@ const path = require("path");
 const cors = require("cors");
 
 const app = express();
-const port = 5000;
+const port = 5001;
+const defaultFormat = "mp3";
 
 app.use(cors()); // Allow frontend requests
 app.use(express.json());
 
+app.get("/health", (req, res) => {
+  res.json({ status: "OK" });
+});
+
 app.post("/download", async (req, res) => {
-  const { url, customName } = req.body;
+  const { url, customName, format: formatExt = defaultFormat } = req.body;
 
   if (!url) {
     return res.status(400).json({ error: "YouTube URL is required" });
@@ -24,11 +29,11 @@ app.post("/download", async (req, res) => {
     const videoTitle = metadata.title || "downloaded";
 
     const outputName = customName ? sanitize(customName) : sanitize(videoTitle);
-    const outputFile = path.resolve(__dirname, "downloads", `${outputName}.mp3`);
+    const outputFile = path.resolve(__dirname, "downloads", `${outputName}.${formatExt}`);
 
-    await ytDlp.execPromise([url, "-x", "--audio-format", "mp3", "-o", outputFile]);
+    await ytDlp.execPromise([url, "-x", "--audio-format", formatExt, "-o", outputFile]);
 
-    res.json({ message: "Download complete", file: `${outputName}.mp3` });
+    res.json({ message: "Download complete", file: `${outputName}.${formatExt}` });
   } catch (err) {
     res.status(500).json({ error: `Failed to download: ${err.message}` });
   }
