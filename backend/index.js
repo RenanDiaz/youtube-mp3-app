@@ -83,7 +83,7 @@ app.post("/download/playlist", async (req, res) => {
       }
     });
     // Remove the output directory after zipping
-    fs.rmdir(outputDir, { recursive: true }, (err) => {
+    fs.rm(outputDir, { recursive: true }, (err) => {
       if (err) throw err;
     });
     res.json({ message: "Playlist download complete", file: `${playlistTitle}.zip` });
@@ -132,10 +132,10 @@ app.post("/download/list", async (req, res) => {
       }
     });
     // Remove the output directory after zipping
-    fs.rmdir(outputDir, { recursive: true }, (err) => {
+    fs.rm(outputDir, { recursive: true }, (err) => {
       if (err) throw err;
     });
-    res.json({ message: "Multiple downloads complete", file: `multiple-downloads` });
+    res.json({ message: "Multiple downloads complete", file: "multiple-downloads.zip" });
   } catch (err) {
     res.status(500).json({ error: `Failed to download list: ${err.message}` });
   }
