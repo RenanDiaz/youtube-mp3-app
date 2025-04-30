@@ -3,6 +3,7 @@ const YtDlpWrap = require("yt-dlp-wrap").default;
 const sanitize = require("sanitize-filename");
 const fs = require("fs");
 const path = require("path");
+const AdmZip = require("adm-zip");
 const cors = require("cors");
 
 const app = express();
@@ -39,6 +40,107 @@ app.post("/download", async (req, res) => {
   }
 });
 
+app.post("/download/playlist", async (req, res) => {
+  const { url, format: formatExt = defaultFormat } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: "YouTube playlist URL is required" });
+  }
+  try {
+    const ytDlp = new YtDlpWrap("yt-dlp");
+    const metadata = await ytDlp.getVideoInfo(url);
+    const playlistTitle = metadata.title || "playlist";
+    const outputDir = path.resolve(__dirname, "downloads", sanitize(playlistTitle));
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
+
+    const args = [
+      url,
+      "-o",
+      outputFile,
+      "-x",
+      "--audio-format",
+      formatExt,
+      "--restrict-filenames",
+      "--no-overwrites",
+      "--continue",
+    ];
+    await ytDlp.execPromise(args);
+
+    // Zip the downloaded files
+    const zipFilePath = path.resolve(__dirname, "downloads", `${playlistTitle}.zip`);
+    const zip = new AdmZip();
+    zip.addLocalFolder(outputDir);
+    zip.writeZip(zipFilePath);
+    // Remove the individual files after zipping
+    fs.readdir(outputDir, (err, files) => {
+      if (err) throw err;
+      for (const file of files) {
+        fs.unlink(path.join(outputDir, file), (err) => {
+          if (err) throw err;
+        });
+      }
+    });
+    // Remove the output directory after zipping
+    fs.rmdir(outputDir, { recursive: true }, (err) => {
+      if (err) throw err;
+    });
+    res.json({ message: "Playlist download complete", file: `${playlistTitle}.zip` });
+  } catch (err) {
+    res.status(500).json({ error: `Failed to download playlist: ${err.message}` });
+  }
+});
+
+app.post("/download/list", async (req, res) => {
+  const { urls, format: formatExt = defaultFormat } = req.body;
+  if (!urls || !Array.isArray(urls) || urls.length === 0) {
+    return res.status(400).json({ error: "YouTube URLs are required" });
+  }
+  try {
+    const ytDlp = new YtDlpWrap("yt-dlp");
+    const outputDir = path.resolve(__dirname, "downloads", "multiple-downloads");
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+    const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
+
+    const args = [
+      ...urls,
+      "-o",
+      outputFile,
+      "-x",
+      "--audio-format",
+      formatExt,
+      "--restrict-filenames",
+      "--no-overwrites",
+      "--continue",
+    ];
+    await ytDlp.execPromise(args);
+    // Zip the downloaded files
+    const zipFilePath = path.resolve(__dirname, "downloads", `multiple-downloads.zip`);
+    const zip = new AdmZip();
+    zip.addLocalFolder(outputDir);
+    zip.writeZip(zipFilePath);
+    // Remove the individual files after zipping
+    fs.readdir(outputDir, (err, files) => {
+      if (err) throw err;
+      for (const file of files) {
+        fs.unlink(path.join(outputDir, file), (err) => {
+          if (err) throw err;
+        });
+      }
+    });
+    // Remove the output directory after zipping
+    fs.rmdir(outputDir, { recursive: true }, (err) => {
+      if (err) throw err;
+    });
+    res.json({ message: "Multiple downloads complete", file: `multiple-downloads` });
+  } catch (err) {
+    res.status(500).json({ error: `Failed to download list: ${err.message}` });
+  }
+});
+
 // Serve downloaded files
 app.use("/downloads", express.static(path.join(__dirname, "downloads")));
 
@@ -47,5 +149,25 @@ app.listen(port, () => {
   // Create downloads folder if it doesn't exist
   if (!fs.existsSync("downloads")) {
     fs.mkdirSync("downloads");
+  } else {
+    // Clear the downloads folder
+    fs.readdir("downloads", (err, files) => {
+      if (err) throw err;
+      for (const file of files) {
+        const filePath = path.join("downloads", file);
+        fs.stat(filePath, (statErr, stats) => {
+          if (statErr) throw statErr;
+          if (stats.isDirectory()) {
+            fs.rm(filePath, { recursive: true }, (rmErr) => {
+              if (rmErr) throw rmErr;
+            });
+          } else {
+            fs.unlink(filePath, (unlinkErr) => {
+              if (unlinkErr) throw unlinkErr;
+            });
+          }
+        });
+      }
+    });
   }
 });
