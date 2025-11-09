@@ -1,0 +1,136 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Frontend: Install Dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Backend: Install Dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Install All Dependencies",
+      "dependsOn": [
+        "Frontend: Install Dependencies",
+        "Backend: Install Dependencies"
+      ],
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: Start Dev Server",
+      "type": "npm",
+      "script": "dev",
+      "path": "frontend/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "dev"
+      }
+    },
+    {
+      "label": "Backend: Start Server",
+      "type": "shell",
+      "command": "node index.js",
+      "options": {
+        "cwd": "${workspaceFolder}/backend"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "group": "dev"
+      }
+    },
+    {
+      "label": "Start Full Stack",
+      "dependsOn": [
+        "Backend: Start Server",
+        "Frontend: Start Dev Server"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Frontend: Run Tests",
+      "type": "npm",
+      "script": "test",
+      "path": "frontend/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Frontend: Run Tests (Watch)",
+      "type": "shell",
+      "command": "npm test",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Frontend: Build Production",
+      "type": "npm",
+      "script": "build",
+      "path": "frontend/",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Frontend: Type Check",
+      "type": "shell",
+      "command": "npx tsc --noEmit",
+      "options": {
+        "cwd": "${workspaceFolder}/frontend"
+      },
+      "problemMatcher": ["$tsc"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Git: Status",
+      "type": "shell",
+      "command": "git status",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}
