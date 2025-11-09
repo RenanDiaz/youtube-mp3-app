@@ -26,13 +26,17 @@ app.post("/download", async (req, res) => {
 
   try {
     const ytDlp = new YtDlpWrap("yt-dlp");
-    const metadata = await ytDlp.getVideoInfo(url);
+
+    // Normalize URL to avoid youtube music issue
+    const normalizedUrl = url.replace("music.youtube.com", "www.youtube.com");
+
+    const metadata = await ytDlp.getVideoInfo(normalizedUrl);
     const videoTitle = metadata.title || "downloaded";
 
     const outputName = customName ? sanitize(customName) : sanitize(videoTitle);
     const outputFile = path.resolve(__dirname, "downloads", `${outputName}.${formatExt}`);
 
-    await ytDlp.execPromise([url, "-x", "--audio-format", formatExt, "-o", outputFile]);
+    await ytDlp.execPromise([normalizedUrl, "-x", "--audio-format", formatExt, "-o", outputFile]);
 
     res.json({ message: "Download complete", file: `${outputName}.${formatExt}` });
   } catch (err) {
