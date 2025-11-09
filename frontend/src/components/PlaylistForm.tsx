@@ -24,7 +24,7 @@ const PlaylistForm: FC = () => {
       setMessage(
         <span>
           {response.data.message}:{" "}
-          <a href={`${API_BASE_URL}/downloads/${response.data.file}`} download>
+          <a href={`${API_BASE_URL}${response.data.downloadUrl}`} download>
             {response.data.file}
           </a>
         </span>
