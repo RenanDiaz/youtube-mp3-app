@@ -1,7 +1,8 @@
 const express = require("express");
 const YtDlpWrap = require("yt-dlp-wrap").default;
 const sanitize = require("sanitize-filename");
-const fs = require("fs");
+const fs = require("fs").promises;
+const fsSync = require("fs");
 const path = require("path");
 const AdmZip = require("adm-zip");
 const helmet = require("helmet");
@@ -17,6 +18,23 @@ const {
   validateMultiDownloadRequest
 } = require("./src/middleware/validation");
 const { apiLimiter, downloadLimiter, speedLimiter } = require("./src/middleware/rateLimiter");
+
+// Phase 2: Import logging and error handling (2.1, 2.2)
+const logger = require("./src/utils/logger");
+const requestLogger = require("./src/middleware/requestLogger");
+const {
+  asyncHandler,
+  notFoundHandler,
+  errorHandler,
+  setupUncaughtExceptionHandler,
+  setupUnhandledRejectionHandler
+} = require("./src/middleware/errorHandler");
+const { DownloadError } = require("./src/utils/errors");
+const gracefulShutdown = require("./src/utils/shutdown");
+
+// Set up error handlers for uncaught exceptions and rejections (2.1)
+setupUncaughtExceptionHandler();
+setupUnhandledRejectionHandler();
 
 const app = express();
 
@@ -43,6 +61,9 @@ app.use(corsMiddleware);
 // Body parsing
 app.use(express.json());
 
+// Request logging (2.2)
+app.use(requestLogger);
+
 // Apply general rate limiting (1.5)
 app.use(apiLimiter);
 
@@ -51,199 +72,237 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
-// Single file download endpoint with full security (1.1, 1.3, 1.5)
-app.post("/download", speedLimiter, downloadLimiter, validateDownloadRequest, async (req, res) => {
+// Helper function for safe cleanup (2.3 - fixes race conditions)
+async function cleanupDirectory(dirPath) {
+  try {
+    const files = await fs.readdir(dirPath);
+
+    // Delete all files first
+    await Promise.all(
+      files.map(file =>
+        fs.unlink(path.join(dirPath, file)).catch(err => {
+          logger.error(`Failed to delete file ${file}:`, err);
+        })
+      )
+    );
+
+    // Then delete directory
+    await fs.rmdir(dirPath);
+    logger.info(`Cleaned up directory: ${dirPath}`);
+  } catch (err) {
+    logger.error(`Failed to cleanup directory ${dirPath}:`, err);
+    // Don't throw - log and continue
+  }
+}
+
+// Helper function for safe zip creation (2.3)
+async function createZipFile(sourceDir, zipPath) {
+  return new Promise((resolve, reject) => {
+    try {
+      const zip = new AdmZip();
+      zip.addLocalFolder(sourceDir);
+      zip.writeZip(zipPath);
+      logger.info(`Created zip file: ${zipPath}`);
+      resolve();
+    } catch (err) {
+      logger.error(`Failed to create zip: ${err.message}`);
+      reject(new DownloadError('Failed to create zip file'));
+    }
+  });
+}
+
+// Single file download endpoint with full security and error handling (1.1, 1.3, 1.5, 2.1)
+app.post("/download", speedLimiter, downloadLimiter, validateDownloadRequest, asyncHandler(async (req, res) => {
   const { validatedUrl, validatedFormat, validatedCustomName } = req.body;
 
+  const ytDlp = new YtDlpWrap("yt-dlp");
+
+  // Normalize URL to avoid youtube music issue
+  const normalizedUrl = validatedUrl.replace("music.youtube.com", "www.youtube.com");
+
+  const metadata = await ytDlp.getVideoInfo(normalizedUrl);
+  const videoTitle = metadata.title || "downloaded";
+
+  const outputName = validatedCustomName || sanitize(videoTitle);
+  const outputFile = path.resolve(__dirname, config.download.directory, `${outputName}.${validatedFormat}`);
+
+  logger.info(`Starting download: ${videoTitle} as ${validatedFormat}`);
+
   try {
-    const ytDlp = new YtDlpWrap("yt-dlp");
-
-    // Normalize URL to avoid youtube music issue
-    const normalizedUrl = validatedUrl.replace("music.youtube.com", "www.youtube.com");
-
-    const metadata = await ytDlp.getVideoInfo(normalizedUrl);
-    const videoTitle = metadata.title || "downloaded";
-
-    const outputName = validatedCustomName || sanitize(videoTitle);
-    const outputFile = path.resolve(__dirname, config.download.directory, `${outputName}.${validatedFormat}`);
-
     await ytDlp.execPromise([normalizedUrl, "-x", "--audio-format", validatedFormat, "-o", outputFile]);
-
-    // Generate download token for secure access (1.3)
-    const filename = `${outputName}.${validatedFormat}`;
-    const token = generateDownloadToken(filename);
-
-    res.json({
-      message: "Download complete",
-      file: filename,
-      downloadUrl: `/downloads/${filename}?token=${token}`
-    });
+    logger.info(`Download complete: ${outputFile}`);
   } catch (err) {
-    res.status(500).json({ error: `Failed to download: ${err.message}` });
+    logger.error(`Download failed: ${err.message}`);
+    throw new DownloadError(`Failed to download: ${err.message}`);
   }
-});
 
-// Playlist download endpoint with full security
-app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRequest, async (req, res) => {
+  // Generate download token for secure access (1.3)
+  const filename = `${outputName}.${validatedFormat}`;
+  const token = generateDownloadToken(filename);
+
+  res.json({
+    message: "Download complete",
+    file: filename,
+    downloadUrl: `/downloads/${filename}?token=${token}`
+  });
+}));
+
+// Playlist download endpoint with full security and error handling (2.3 - race conditions fixed)
+app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRequest, asyncHandler(async (req, res) => {
   const { validatedUrl, validatedFormat } = req.body;
 
+  const ytDlp = new YtDlpWrap("yt-dlp");
+  const metadata = await ytDlp.getVideoInfo(validatedUrl);
+  const playlistTitle = metadata.title || "playlist";
+  const sanitizedTitle = sanitize(playlistTitle);
+
+  // Use timestamp to avoid collisions (2.3)
+  const timestamp = Date.now();
+  const uniqueDir = `${sanitizedTitle}-${timestamp}`;
+  const outputDir = path.resolve(__dirname, config.download.directory, uniqueDir);
+
+  // Create directory
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
+
+  const args = [
+    validatedUrl,
+    "-o",
+    outputFile,
+    "-x",
+    "--audio-format",
+    validatedFormat,
+    "--restrict-filenames",
+    "--no-overwrites",
+    "--continue",
+  ];
+
+  logger.info(`Starting playlist download: ${playlistTitle}`);
+
   try {
-    const ytDlp = new YtDlpWrap("yt-dlp");
-    const metadata = await ytDlp.getVideoInfo(validatedUrl);
-    const playlistTitle = metadata.title || "playlist";
-    const sanitizedTitle = sanitize(playlistTitle);
-    const outputDir = path.resolve(__dirname, config.download.directory, sanitizedTitle);
-
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
-
-    const args = [
-      validatedUrl,
-      "-o",
-      outputFile,
-      "-x",
-      "--audio-format",
-      validatedFormat,
-      "--restrict-filenames",
-      "--no-overwrites",
-      "--continue",
-    ];
-
     await ytDlp.execPromise(args);
-
-    // Zip the downloaded files
-    const zipFilePath = path.resolve(__dirname, config.download.directory, `${sanitizedTitle}.zip`);
-    const zip = new AdmZip();
-    zip.addLocalFolder(outputDir);
-    zip.writeZip(zipFilePath);
-
-    // Remove the individual files after zipping
-    fs.readdir(outputDir, (err, files) => {
-      if (err) throw err;
-      for (const file of files) {
-        fs.unlink(path.join(outputDir, file), (err) => {
-          if (err) throw err;
-        });
-      }
-    });
-
-    // Remove the output directory after zipping
-    fs.rm(outputDir, { recursive: true }, (err) => {
-      if (err) throw err;
-    });
-
-    // Generate download token
-    const filename = `${sanitizedTitle}.zip`;
-    const token = generateDownloadToken(filename);
-
-    res.json({
-      message: "Playlist download complete",
-      file: filename,
-      downloadUrl: `/downloads/${filename}?token=${token}`
-    });
+    logger.info(`Playlist download complete: ${playlistTitle}`);
   } catch (err) {
-    res.status(500).json({ error: `Failed to download playlist: ${err.message}` });
+    logger.error(`Playlist download failed: ${err.message}`);
+    throw new DownloadError(`Failed to download playlist: ${err.message}`);
   }
-});
 
-// Multiple URLs download endpoint with full security
-app.post("/download/list", speedLimiter, downloadLimiter, validateMultiDownloadRequest, async (req, res) => {
+  // Create zip file
+  const zipFilePath = path.resolve(__dirname, config.download.directory, `${uniqueDir}.zip`);
+  await createZipFile(outputDir, zipFilePath);
+
+  // Clean up directory AFTER zip is complete (2.3 - fixes race condition)
+  await cleanupDirectory(outputDir);
+
+  // Generate download token
+  const filename = `${uniqueDir}.zip`;
+  const token = generateDownloadToken(filename);
+
+  res.json({
+    message: "Playlist download complete",
+    file: filename,
+    downloadUrl: `/downloads/${filename}?token=${token}`
+  });
+}));
+
+// Multiple URLs download endpoint with full security and error handling (2.3 - race conditions fixed)
+app.post("/download/list", speedLimiter, downloadLimiter, validateMultiDownloadRequest, asyncHandler(async (req, res) => {
   const { validatedUrls, validatedFormat } = req.body;
 
+  const ytDlp = new YtDlpWrap("yt-dlp");
+
+  // Use timestamp to avoid collisions (2.3)
+  const timestamp = Date.now();
+  const uniqueDir = `multiple-${timestamp}`;
+  const outputDir = path.resolve(__dirname, config.download.directory, uniqueDir);
+
+  // Create directory
+  await fs.mkdir(outputDir, { recursive: true });
+
+  const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
+
+  const args = [
+    ...validatedUrls,
+    "-o",
+    outputFile,
+    "-x",
+    "--audio-format",
+    validatedFormat,
+    "--restrict-filenames",
+    "--no-overwrites",
+    "--continue",
+  ];
+
+  logger.info(`Starting multi-download: ${validatedUrls.length} URLs`);
+
   try {
-    const ytDlp = new YtDlpWrap("yt-dlp");
-    const outputDir = path.resolve(__dirname, config.download.directory, "multiple-downloads");
-
-    if (!fs.existsSync(outputDir)) {
-      fs.mkdirSync(outputDir, { recursive: true });
-    }
-
-    const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
-
-    const args = [
-      ...validatedUrls,
-      "-o",
-      outputFile,
-      "-x",
-      "--audio-format",
-      validatedFormat,
-      "--restrict-filenames",
-      "--no-overwrites",
-      "--continue",
-    ];
-
     await ytDlp.execPromise(args);
-
-    // Zip the downloaded files
-    const zipFilePath = path.resolve(__dirname, config.download.directory, "multiple-downloads.zip");
-    const zip = new AdmZip();
-    zip.addLocalFolder(outputDir);
-    zip.writeZip(zipFilePath);
-
-    // Remove the individual files after zipping
-    fs.readdir(outputDir, (err, files) => {
-      if (err) throw err;
-      for (const file of files) {
-        fs.unlink(path.join(outputDir, file), (err) => {
-          if (err) throw err;
-        });
-      }
-    });
-
-    // Remove the output directory after zipping
-    fs.rm(outputDir, { recursive: true }, (err) => {
-      if (err) throw err;
-    });
-
-    // Generate download token
-    const filename = "multiple-downloads.zip";
-    const token = generateDownloadToken(filename);
-
-    res.json({
-      message: "Multiple downloads complete",
-      file: filename,
-      downloadUrl: `/downloads/${filename}?token=${token}`
-    });
+    logger.info(`Multi-download complete: ${validatedUrls.length} URLs`);
   } catch (err) {
-    res.status(500).json({ error: `Failed to download list: ${err.message}` });
+    logger.error(`Multi-download failed: ${err.message}`);
+    throw new DownloadError(`Failed to download list: ${err.message}`);
   }
-});
+
+  // Create zip file
+  const zipFilePath = path.resolve(__dirname, config.download.directory, `${uniqueDir}.zip`);
+  await createZipFile(outputDir, zipFilePath);
+
+  // Clean up directory AFTER zip is complete (2.3 - fixes race condition)
+  await cleanupDirectory(outputDir);
+
+  // Generate download token
+  const filename = `${uniqueDir}.zip`;
+  const token = generateDownloadToken(filename);
+
+  res.json({
+    message: "Multiple downloads complete",
+    file: filename,
+    downloadUrl: `/downloads/${filename}?token=${token}`
+  });
+}));
 
 // Serve downloaded files with authentication (1.3)
 app.use("/downloads", authenticateDownload, express.static(path.join(__dirname, config.download.directory)));
 
+// Error handlers (must be last) (2.1)
+app.use(notFoundHandler);
+app.use(errorHandler);
+
 // Start server
-app.listen(config.port, config.host, () => {
-  console.log(`Backend running on http://${config.host}:${config.port}`);
-  console.log(`Environment: ${config.env}`);
+const server = app.listen(config.port, config.host, async () => {
+  logger.info(`Backend running on http://${config.host}:${config.port}`);
+  logger.info(`Environment: ${config.env}`);
 
   // Create downloads folder if it doesn't exist
   const downloadsDir = path.resolve(__dirname, config.download.directory);
-  if (!fs.existsSync(downloadsDir)) {
-    fs.mkdirSync(downloadsDir, { recursive: true });
-    console.log(`Created downloads directory: ${downloadsDir}`);
-  } else {
-    // Clear the downloads folder on startup
-    fs.readdir(downloadsDir, (err, files) => {
-      if (err) throw err;
+  try {
+    if (!fsSync.existsSync(downloadsDir)) {
+      await fs.mkdir(downloadsDir, { recursive: true });
+      logger.info(`Created downloads directory: ${downloadsDir}`);
+    } else {
+      // Clear the downloads folder on startup (2.3 - using promises)
+      const files = await fs.readdir(downloadsDir);
       for (const file of files) {
         const filePath = path.join(downloadsDir, file);
-        fs.stat(filePath, (statErr, stats) => {
-          if (statErr) throw statErr;
-          if (stats.isDirectory()) {
-            fs.rm(filePath, { recursive: true }, (rmErr) => {
-              if (rmErr) throw rmErr;
-            });
-          } else {
-            fs.unlink(filePath, (unlinkErr) => {
-              if (unlinkErr) throw unlinkErr;
-            });
-          }
-        });
+        const stats = await fs.stat(filePath);
+        if (stats.isDirectory()) {
+          await fs.rm(filePath, { recursive: true }).catch(err => {
+            logger.error(`Failed to remove directory ${filePath}:`, err);
+          });
+        } else {
+          await fs.unlink(filePath).catch(err => {
+            logger.error(`Failed to remove file ${filePath}:`, err);
+          });
+        }
       }
-    });
+      logger.info('Cleaned downloads directory on startup');
+    }
+  } catch (err) {
+    logger.error('Error during startup cleanup:', err);
   }
 });
+
+// Graceful shutdown handlers (2.4)
+process.on('SIGTERM', gracefulShutdown(server, 'SIGTERM'));
+process.on('SIGINT', gracefulShutdown(server, 'SIGINT'));
