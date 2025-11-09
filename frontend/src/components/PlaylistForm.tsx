@@ -2,6 +2,7 @@ import React, { useState, ReactNode, FC } from "react";
 import { Form, FormGroup, Label, Input, Button, Alert, Spinner } from "reactstrap";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
+import { FormatSelector } from "./FormatSelector";
 
 const PlaylistForm: FC = () => {
   const [url, setUrl] = useState<string>("");
@@ -50,20 +51,13 @@ const PlaylistForm: FC = () => {
             required
           />
         </FormGroup>
-        <FormGroup>
-          <Label for="format">Format</Label>
-          <Input
-            type="select"
-            id="format"
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-          >
-            <option value="mp3">MP3</option>
-            <option value="wav">WAV</option>
-            <option value="m4a">M4A</option>
-            <option value="flac">FLAC</option>
-          </Input>
-        </FormGroup>
+
+        {/* Enhanced Format Selector (Phase 2.2) */}
+        <FormatSelector
+          value={format}
+          onChange={setFormat}
+          disabled={loading}
+        />
         <Button color="primary" type="submit" disabled={loading}>
           {loading ? <Spinner size="sm" /> : `Download ${format.toUpperCase()}`}
         </Button>
