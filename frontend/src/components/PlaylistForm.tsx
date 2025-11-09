@@ -1,6 +1,7 @@
 import React, { useState, ReactNode, FC } from "react";
 import { Form, FormGroup, Label, Input, Button, Alert, Spinner } from "reactstrap";
 import axios from "axios";
+import { API_BASE_URL } from "../config";
 
 const PlaylistForm: FC = () => {
   const [url, setUrl] = useState<string>("");
@@ -16,14 +17,14 @@ const PlaylistForm: FC = () => {
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:5001/download/playlist", {
+      const response = await axios.post(`${API_BASE_URL}/download/playlist`, {
         url,
         format,
       });
       setMessage(
         <span>
           {response.data.message}:{" "}
-          <a href={`http://localhost:5001/downloads/${response.data.file}`} download>
+          <a href={`${API_BASE_URL}/downloads/${response.data.file}`} download>
             {response.data.file}
           </a>
         </span>

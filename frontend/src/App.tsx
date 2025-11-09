@@ -1,4 +1,4 @@
-import React, { useState, FC, useEffect } from "react";
+import { useState, FC, useEffect } from "react";
 import { Container, Nav, NavItem, NavLink, TabPane, TabContent } from "reactstrap";
 import "./App.css";
 import SingleFileForm from "./components/SingleFileForm";

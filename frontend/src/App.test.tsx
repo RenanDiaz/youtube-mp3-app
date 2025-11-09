@@ -1,9 +1,18 @@
-import React from 'react';
-import { render, screen } from '@testing-library/react';
-import App from './App';
+import { describe, it, expect } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import App from './App'
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
-});
+describe('App', () => {
+  it('renders YouTube to Audio Downloader heading', () => {
+    render(<App />)
+    const headingElement = screen.getByText(/YouTube to Audio Downloader/i)
+    expect(headingElement).toBeInTheDocument()
+  })
+
+  it('renders tabs', () => {
+    render(<App />)
+    expect(screen.getByText('Single File')).toBeInTheDocument()
+    expect(screen.getByText('Playlist')).toBeInTheDocument()
+    expect(screen.getByText('Multi File')).toBeInTheDocument()
+  })
+})
