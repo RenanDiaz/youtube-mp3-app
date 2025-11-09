@@ -15,10 +15,11 @@ function notFoundHandler(req, res, next) {
   });
 }
 
-// Main error handler
+// Main error handler with structured responses (Phase 1.2)
 function errorHandler(err, req, res, next) {
   let statusCode = err.statusCode || 500;
   let message = err.message || 'Internal server error';
+  let code = err.code || 'INTERNAL_ERROR';
 
   // Log the error
   logger.logError(err, req);
@@ -29,19 +30,26 @@ function errorHandler(err, req, res, next) {
     message = 'An unexpected error occurred';
   }
 
-  // Send error response
+  // Send structured error response (Phase 1.2)
   const response = {
-    error: message,
-    statusCode
+    success: false,
+    error: {
+      message,
+      code,
+      statusCode,
+      timestamp: err.timestamp || new Date().toISOString()
+    }
   };
 
   // Include stack trace in development
   if (env === 'development' && err.stack) {
-    response.stack = err.stack;
+    response.error.stack = err.stack;
   }
 
-  // Include timestamp
-  response.timestamp = err.timestamp || new Date().toISOString();
+  // Include additional error details if available
+  if (err.details) {
+    response.error.details = err.details;
+  }
 
   res.status(statusCode).json(response);
 }

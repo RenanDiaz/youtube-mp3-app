@@ -1,16 +1,17 @@
 import React, { useState, FC } from "react";
-import { Form, FormGroup, Label, Input, Button, Alert } from "reactstrap";
+import { Form, FormGroup, Label, Input, Button } from "reactstrap";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 import { useDownloadProgress } from "../hooks/useDownloadProgress";
 import { ProgressTracker } from "./ProgressTracker";
+import { ErrorDisplay } from "./ErrorDisplay";
 
 const SingleFileForm: FC = () => {
   const [url, setUrl] = useState<string>("");
   const [customName, setCustomName] = useState<string>("");
   const [format, setFormat] = useState<string>("mp3");
   const [downloadId, setDownloadId] = useState<string | null>(null);
-  const [error, setError] = useState<string>("");
+  const [error, setError] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   // Use progress tracking hook
@@ -18,7 +19,7 @@ const SingleFileForm: FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setError(null);
     setIsSubmitting(true);
 
     try {
@@ -33,7 +34,7 @@ const SingleFileForm: FC = () => {
       const { downloadId: newDownloadId } = response.data;
       setDownloadId(newDownloadId);
     } catch (err: any) {
-      setError(err.response?.data?.error || "An error occurred");
+      setError(err);
     } finally {
       setIsSubmitting(false);
     }
@@ -47,6 +48,10 @@ const SingleFileForm: FC = () => {
       setDownloadId(null);
       progressState.reset();
     }, 3000);
+  };
+
+  const handleRetry = () => {
+    setError(null);
   };
 
   // Determine if download is in progress
@@ -106,11 +111,11 @@ const SingleFileForm: FC = () => {
       <ProgressTracker state={progressState} onComplete={handleComplete} />
 
       {/* Show submission errors */}
-      {error && (
-        <Alert color="danger" className="mt-3">
-          {error}
-        </Alert>
-      )}
+      <ErrorDisplay
+        error={error}
+        onDismiss={() => setError(null)}
+        onRetry={handleRetry}
+      />
     </>
   );
 };
