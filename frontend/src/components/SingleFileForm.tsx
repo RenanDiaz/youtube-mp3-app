@@ -7,6 +7,7 @@ import { useUrlValidation } from "../hooks/useUrlValidation";
 import { ProgressTracker } from "./ProgressTracker";
 import { ErrorDisplay } from "./ErrorDisplay";
 import { VideoPreview } from "./VideoPreview";
+import { FormatSelector } from "./FormatSelector";
 
 const SingleFileForm: FC = () => {
   const [url, setUrl] = useState<string>("");
@@ -99,21 +100,13 @@ const SingleFileForm: FC = () => {
             disabled={isDownloading}
           />
         </FormGroup>
-        <FormGroup>
-          <Label for="format">Format</Label>
-          <Input
-            type="select"
-            id="format"
-            value={format}
-            onChange={(e) => setFormat(e.target.value)}
-            disabled={isDownloading}
-          >
-            <option value="mp3">MP3</option>
-            <option value="wav">WAV</option>
-            <option value="m4a">M4A</option>
-            <option value="flac">FLAC</option>
-          </Input>
-        </FormGroup>
+
+        {/* Enhanced Format Selector (Phase 2.2) */}
+        <FormatSelector
+          value={format}
+          onChange={setFormat}
+          disabled={isDownloading}
+        />
         <Button
           color="primary"
           type="submit"

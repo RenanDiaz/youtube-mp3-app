@@ -1,0 +1,50 @@
+<svg width="192" height="192" viewBox="0 0 192 192" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient -->
+  <rect width="192" height="192" rx="43" fill="url(#gradient)"/>
+
+  <!-- Definitions -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="192" y2="192" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff0000"/>
+      <stop offset="100%" stop-color="#c41e3a"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="1" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Play button circle -->
+  <circle cx="96" cy="82" r="41" fill="white" opacity="0.95" filter="url(#shadow)"/>
+
+  <!-- Play triangle -->
+  <path d="M 86 62 L 86 102 L 116 82 Z" fill="#ff0000"/>
+
+  <!-- Music note -->
+  <g transform="translate(108, 97)" filter="url(#shadow)">
+    <rect x="0" y="-7.5" width="6" height="37.5" rx="3" fill="white"/>
+    <ellipse cx="3" cy="32.5" rx="12" ry="9" fill="white"/>
+    <ellipse cx="3" cy="25" rx="10" ry="7.5" fill="white"/>
+    <path d="M 3 -7.5 Q 22.5 -2.5, 30 -12 Q 31.5 -15, 29 -17 Q 18.5 -7.5, 6 -7.5 Z" fill="#f59e0b"/>
+  </g>
+
+  <!-- Download arrow -->
+  <g transform="translate(56, 128)" opacity="0.9">
+    <path d="M 11 0 L 11 15 L 4 15 L 15 26 L 26 15 L 19 15 L 19 0 Z" fill="white" filter="url(#shadow)"/>
+    <path d="M 11 3 L 11 15 L 6.5 15 L 15 23.5 L 23.5 15 L 19 15 L 19 3 Z" fill="#f59e0b"/>
+  </g>
+
+  <!-- Subtle waveform -->
+  <g opacity="0.1">
+    <path d="M 30 169 Q 45 163, 60 169 T 90 169 T 120 169 T 150 169 T 180 169"
+          stroke="white" stroke-width="1.5" fill="none"/>
+  </g>
+</svg>

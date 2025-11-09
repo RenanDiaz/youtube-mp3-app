@@ -15,6 +15,7 @@
     "classnames": "^2.5.1",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
+    "react-icons": "^5.5.0",
     "reactstrap": "^9.2.3"
   },
   "scripts": {
@@ -23,7 +24,9 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "coverage": "vitest run --coverage"
+    "coverage": "vitest run --coverage",
+    "icons:generate": "node generate-icons.js",
+    "icons:preview": "vite --open /icon-preview.html"
   },
   "browserslist": {
     "production": [
@@ -42,6 +45,7 @@
     "@vitejs/plugin-react": "^4.7.0",
     "@vitest/ui": "^2.1.9",
     "jsdom": "^25.0.1",
+    "sharp": "^0.34.5",
     "typescript": "^5.9.3",
     "vite": "^6.4.1",
     "vitest": "^2.1.9"
