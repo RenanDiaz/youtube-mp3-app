@@ -1,0 +1,83 @@
+.progress-tracker {
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.progress-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.status-label {
+  font-weight: 500;
+  color: #e0e0e0;
+  font-size: 0.95rem;
+}
+
+.progress-percentage {
+  font-weight: 600;
+  color: #ffffff;
+  font-size: 1.1rem;
+}
+
+.progress-bar-custom {
+  height: 8px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.progress-bar-custom .progress-bar {
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.progress-details {
+  display: flex;
+  gap: 2rem;
+  font-size: 0.85rem;
+  color: #b0b0b0;
+}
+
+.progress-info {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.info-label {
+  color: #808080;
+}
+
+.info-value {
+  color: #e0e0e0;
+  font-weight: 500;
+}
+
+/* Success/Error alert styling */
+.alert {
+  border-radius: 8px;
+  border: none;
+}
+
+.alert.alert-success {
+  background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+  color: white;
+}
+
+.alert.alert-danger {
+  background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+  color: white;
+}
+
+.alert .alert-heading {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.alert .btn {
+  margin-top: 0.5rem;
+  font-weight: 500;
+}

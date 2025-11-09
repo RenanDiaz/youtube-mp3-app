@@ -1,42 +1,56 @@
-import React, { useState, ReactNode, FC } from "react";
-import { Form, FormGroup, Label, Input, Button, Alert, Spinner } from "reactstrap";
+import React, { useState, FC } from "react";
+import { Form, FormGroup, Label, Input, Button, Alert } from "reactstrap";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
+import { useDownloadProgress } from "../hooks/useDownloadProgress";
+import { ProgressTracker } from "./ProgressTracker";
 
 const SingleFileForm: FC = () => {
   const [url, setUrl] = useState<string>("");
   const [customName, setCustomName] = useState<string>("");
   const [format, setFormat] = useState<string>("mp3");
-  const [message, setMessage] = useState<ReactNode>(null);
+  const [downloadId, setDownloadId] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Use progress tracking hook
+  const progressState = useDownloadProgress(downloadId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setMessage(null);
     setError("");
-    setLoading(true);
+    setIsSubmitting(true);
 
     try {
+      // Post to backend to start download
       const response = await axios.post(`${API_BASE_URL}/download`, {
         url,
         customName: customName || undefined,
         format,
       });
-      setMessage(
-        <span>
-          {response.data.message}:{" "}
-          <a href={`${API_BASE_URL}${response.data.downloadUrl}`} download>
-            {response.data.file}
-          </a>
-        </span>
-      );
+
+      // Get download ID and start tracking progress
+      const { downloadId: newDownloadId } = response.data;
+      setDownloadId(newDownloadId);
     } catch (err: any) {
       setError(err.response?.data?.error || "An error occurred");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
+
+  const handleComplete = () => {
+    // Reset form after a brief delay
+    setTimeout(() => {
+      setUrl("");
+      setCustomName("");
+      setDownloadId(null);
+      progressState.reset();
+    }, 3000);
+  };
+
+  // Determine if download is in progress
+  const isDownloading = progressState.status !== 'idle' && progressState.status !== 'completed' && progressState.status !== 'failed';
 
   return (
     <>
@@ -50,6 +64,7 @@ const SingleFileForm: FC = () => {
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
+            disabled={isDownloading}
           />
         </FormGroup>
         <FormGroup>
@@ -60,6 +75,7 @@ const SingleFileForm: FC = () => {
             placeholder={`Enter custom filename (without .${format})`}
             value={customName}
             onChange={(e) => setCustomName(e.target.value)}
+            disabled={isDownloading}
           />
         </FormGroup>
         <FormGroup>
@@ -69,6 +85,7 @@ const SingleFileForm: FC = () => {
             id="format"
             value={format}
             onChange={(e) => setFormat(e.target.value)}
+            disabled={isDownloading}
           >
             <option value="mp3">MP3</option>
             <option value="wav">WAV</option>
@@ -76,15 +93,19 @@ const SingleFileForm: FC = () => {
             <option value="flac">FLAC</option>
           </Input>
         </FormGroup>
-        <Button color="primary" type="submit" disabled={loading}>
-          {loading ? <Spinner size="sm" /> : `Download ${format.toUpperCase()}`}
+        <Button
+          color="primary"
+          type="submit"
+          disabled={isDownloading || isSubmitting}
+        >
+          {isDownloading ? 'Downloading...' : `Download ${format.toUpperCase()}`}
         </Button>
       </Form>
-      {message && (
-        <Alert color="success" className="mt-3">
-          {message}
-        </Alert>
-      )}
+
+      {/* Show progress tracker */}
+      <ProgressTracker state={progressState} onComplete={handleComplete} />
+
+      {/* Show submission errors */}
       {error && (
         <Alert color="danger" className="mt-3">
           {error}
