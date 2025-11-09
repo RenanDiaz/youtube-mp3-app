@@ -75,6 +75,80 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
+// URL validation endpoint - validates YouTube URL and returns metadata (Phase 1.3)
+app.post("/validate", speedLimiter, asyncHandler(async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({
+      success: false,
+      error: {
+        message: 'URL is required',
+        code: 'INVALID_REQUEST'
+      }
+    });
+  }
+
+  const ytDlp = new YtDlpWrap("yt-dlp");
+
+  // Normalize URL
+  const normalizedUrl = url.replace("music.youtube.com", "www.youtube.com");
+
+  try {
+    // Get video metadata without downloading
+    const metadata = await ytDlp.getVideoInfo(normalizedUrl);
+
+    // Extract relevant information
+    const videoInfo = {
+      valid: true,
+      title: metadata.title || 'Unknown Title',
+      duration: metadata.duration || 0,
+      thumbnail: metadata.thumbnail || metadata.thumbnails?.[0]?.url || null,
+      uploader: metadata.uploader || metadata.channel || 'Unknown',
+      uploadDate: metadata.upload_date || null,
+      viewCount: metadata.view_count || 0,
+      description: metadata.description?.substring(0, 200) || '',
+      isPlaylist: metadata.playlist_count > 0 || false,
+      playlistCount: metadata.playlist_count || 0
+    };
+
+    logger.info(`Validated URL: ${videoInfo.title}`);
+
+    res.json({
+      success: true,
+      data: videoInfo
+    });
+
+  } catch (err) {
+    logger.error(`URL validation failed:`, err);
+
+    // Determine error type
+    const errorMessage = err.message || '';
+    let code = 'DOWNLOAD_FAILED';
+    let message = 'Failed to validate URL';
+
+    if (errorMessage.includes('not available') || errorMessage.includes('private')) {
+      code = 'VIDEO_UNAVAILABLE';
+      message = 'This video is unavailable, private, or restricted';
+    } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
+      code = 'NETWORK_ERROR';
+      message = 'Network error occurred while validating URL';
+    } else if (errorMessage.includes('format')) {
+      code = 'INVALID_URL';
+      message = 'Invalid YouTube URL format';
+    }
+
+    res.status(400).json({
+      success: false,
+      error: {
+        message,
+        code,
+        statusCode: 400
+      }
+    });
+  }
+}));
+
 // Server-Sent Events endpoint for download progress (Phase 1 UI/UX)
 app.get("/download/progress/:downloadId", (req, res) => {
   const { downloadId } = req.params;

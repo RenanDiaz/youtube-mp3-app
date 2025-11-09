@@ -3,8 +3,10 @@ import { Form, FormGroup, Label, Input, Button } from "reactstrap";
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 import { useDownloadProgress } from "../hooks/useDownloadProgress";
+import { useUrlValidation } from "../hooks/useUrlValidation";
 import { ProgressTracker } from "./ProgressTracker";
 import { ErrorDisplay } from "./ErrorDisplay";
+import { VideoPreview } from "./VideoPreview";
 
 const SingleFileForm: FC = () => {
   const [url, setUrl] = useState<string>("");
@@ -13,6 +15,9 @@ const SingleFileForm: FC = () => {
   const [downloadId, setDownloadId] = useState<string | null>(null);
   const [error, setError] = useState<any>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+
+  // Use URL validation hook (Phase 1.3)
+  const validation = useUrlValidation(url, 800);
 
   // Use progress tracking hook
   const progressState = useDownloadProgress(downloadId);
@@ -57,6 +62,9 @@ const SingleFileForm: FC = () => {
   // Determine if download is in progress
   const isDownloading = progressState.status !== 'idle' && progressState.status !== 'completed' && progressState.status !== 'failed';
 
+  // Check if form can be submitted
+  const canSubmit = validation.status === 'valid' && !isDownloading && !isSubmitting;
+
   return (
     <>
       <Form onSubmit={handleSubmit}>
@@ -65,13 +73,21 @@ const SingleFileForm: FC = () => {
           <Input
             type="text"
             id="url"
-            placeholder="Enter YouTube URL"
+            placeholder="Enter YouTube URL (e.g., https://youtube.com/watch?v=...)"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             required
             disabled={isDownloading}
+            className={validation.status === 'valid' ? 'is-valid' : validation.status === 'invalid' ? 'is-invalid' : ''}
           />
         </FormGroup>
+
+        {/* Show video preview (Phase 1.3) */}
+        <VideoPreview
+          status={validation.status}
+          videoInfo={validation.videoInfo}
+          error={validation.error}
+        />
         <FormGroup>
           <Label for="customName">Custom Filename (optional)</Label>
           <Input
@@ -101,9 +117,9 @@ const SingleFileForm: FC = () => {
         <Button
           color="primary"
           type="submit"
-          disabled={isDownloading || isSubmitting}
+          disabled={!canSubmit}
         >
-          {isDownloading ? 'Downloading...' : `Download ${format.toUpperCase()}`}
+          {isDownloading ? 'Downloading...' : validation.status === 'validating' ? 'Validating...' : `Download ${format.toUpperCase()}`}
         </Button>
       </Form>
 
