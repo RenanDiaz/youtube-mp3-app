@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Icon Preview - YouTube Audio Downloader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: white;
+            text-align: center;
+            margin-bottom: 1rem;
+            font-size: 2.5rem;
+        }
+
+        .subtitle {
+            color: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            margin-bottom: 3rem;
+            font-size: 1.1rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .card h2 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+
+        .icon-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 150px;
+            margin-bottom: 1rem;
+        }
+
+        .card img {
+            max-width: 100%;
+            height: auto;
+        }
+
+        .size-info {
+            color: #666;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+
+        .purpose {
+            color: #999;
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+
+        .theme-section {
+            margin-bottom: 3rem;
+        }
+
+        .theme-title {
+            color: white;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .background-demos {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .bg-demo {
+            padding: 2rem;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .bg-light {
+            background: #ffffff;
+        }
+
+        .bg-dark {
+            background: #1a1a1a;
+        }
+
+        .bg-gray {
+            background: #f3f4f6;
+        }
+
+        .bg-demo-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .bg-light .bg-demo-label {
+            color: #333;
+        }
+
+        .bg-dark .bg-demo-label {
+            color: #fff;
+        }
+
+        .bg-gray .bg-demo-label {
+            color: #666;
+        }
+
+        .size-grid {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .size-grid h3 {
+            color: #333;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .sizes {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        .size-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .size-label {
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .info-section {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .info-section h3 {
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .info-section ul {
+            list-style-position: inside;
+            color: #666;
+            line-height: 1.8;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .color-swatch {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .color-box {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .color-name {
+            font-size: 0.85rem;
+            color: #666;
+            font-weight: 600;
+        }
+
+        .color-code {
+            font-size: 0.75rem;
+            color: #999;
+            font-family: monospace;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Icon System Preview</h1>
+        <p class="subtitle">YouTube Audio Downloader - Custom App Icons</p>
+
+        <!-- Main Icons Grid -->
+        <div class="grid">
+            <div class="card">
+                <h2>Master Icon</h2>
+                <div class="icon-container">
+                    <img src="icon.svg" alt="Master Icon" style="width: 128px; height: 128px;">
+                </div>
+                <div class="size-info">512x512 px</div>
+                <div class="purpose">High-resolution master</div>
+            </div>
+
+            <div class="card">
+                <h2>Favicon</h2>
+                <div class="icon-container">
+                    <img src="favicon.svg" alt="Favicon" style="width: 64px; height: 64px;">
+                </div>
+                <div class="size-info">32x32 px</div>
+                <div class="purpose">Browser tab icon</div>
+            </div>
+
+            <div class="card">
+                <h2>Apple Touch Icon</h2>
+                <div class="icon-container">
+                    <img src="apple-touch-icon.png.svg" alt="Apple Touch Icon" style="width: 128px; height: 128px;">
+                </div>
+                <div class="size-info">180x180 px</div>
+                <div class="purpose">iOS home screen</div>
+            </div>
+
+            <div class="card">
+                <h2>PWA Icon - Small</h2>
+                <div class="icon-container">
+                    <img src="logo192.png.svg" alt="PWA 192" style="width: 128px; height: 128px;">
+                </div>
+                <div class="size-info">192x192 px</div>
+                <div class="purpose">PWA manifest</div>
+            </div>
+        </div>
+
+        <!-- Background Tests -->
+        <div class="theme-section">
+            <h2 class="theme-title">Background Compatibility</h2>
+            <div class="background-demos">
+                <div class="bg-demo bg-light">
+                    <div class="bg-demo-label">Light Background</div>
+                    <img src="favicon.svg" alt="Icon on light" style="width: 64px; height: 64px;">
+                </div>
+                <div class="bg-demo bg-dark">
+                    <div class="bg-demo-label">Dark Background</div>
+                    <img src="favicon.svg" alt="Icon on dark" style="width: 64px; height: 64px;">
+                </div>
+                <div class="bg-demo bg-gray">
+                    <div class="bg-demo-label">Gray Background</div>
+                    <img src="favicon.svg" alt="Icon on gray" style="width: 64px; height: 64px;">
+                </div>
+            </div>
+        </div>
+
+        <!-- Size Scaling -->
+        <div class="size-grid">
+            <h3>Size Scaling Test</h3>
+            <div class="sizes">
+                <div class="size-item">
+                    <img src="favicon.svg" alt="16px" style="width: 16px; height: 16px;">
+                    <div class="size-label">16px</div>
+                </div>
+                <div class="size-item">
+                    <img src="favicon.svg" alt="32px" style="width: 32px; height: 32px;">
+                    <div class="size-label">32px</div>
+                </div>
+                <div class="size-item">
+                    <img src="favicon.svg" alt="48px" style="width: 48px; height: 48px;">
+                    <div class="size-label">48px</div>
+                </div>
+                <div class="size-item">
+                    <img src="icon.svg" alt="64px" style="width: 64px; height: 64px;">
+                    <div class="size-label">64px</div>
+                </div>
+                <div class="size-item">
+                    <img src="icon.svg" alt="128px" style="width: 128px; height: 128px;">
+                    <div class="size-label">128px</div>
+                </div>
+                <div class="size-item">
+                    <img src="icon.svg" alt="256px" style="width: 256px; height: 256px;">
+                    <div class="size-label">256px</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Design Info -->
+        <div class="info-section">
+            <h3>Design Elements</h3>
+            <ul>
+                <li><strong>Play Button:</strong> White circle with red triangle (YouTube/Video concept)</li>
+                <li><strong>Music Note:</strong> White eighth note with orange accent (Audio conversion)</li>
+                <li><strong>Download Arrow:</strong> Orange and white arrow (Download action)</li>
+                <li><strong>Waveform:</strong> Subtle background pattern (Audio processing)</li>
+                <li><strong>Gradient:</strong> Red to dark red (Depth and polish)</li>
+            </ul>
+
+            <h3 style="margin-top: 2rem;">Color Palette</h3>
+            <div class="color-palette">
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #ff0000;"></div>
+                    <div class="color-name">Primary Red</div>
+                    <div class="color-code">#ff0000</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #c41e3a;"></div>
+                    <div class="color-name">Dark Red</div>
+                    <div class="color-code">#c41e3a</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #f59e0b;"></div>
+                    <div class="color-name">Accent Orange</div>
+                    <div class="color-code">#f59e0b</div>
+                </div>
+                <div class="color-swatch">
+                    <div class="color-box" style="background: #ffffff; border: 1px solid #ddd;"></div>
+                    <div class="color-name">White</div>
+                    <div class="color-code">#ffffff</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="info-section">
+            <h3>Next Steps</h3>
+            <ul>
+                <li>The SVG files are ready to use immediately in modern browsers</li>
+                <li>Generate PNG files using the provided script or online converters</li>
+                <li>Create favicon.ico for legacy browser support</li>
+                <li>Clear browser cache to see the new icons</li>
+                <li>Test on iOS and Android devices for PWA functionality</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,59 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background with gradient -->
+  <rect width="512" height="512" rx="115" fill="url(#gradient)"/>
+
+  <!-- Definitions -->
+  <defs>
+    <linearGradient id="gradient" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ff0000"/>
+      <stop offset="100%" stop-color="#c41e3a"/>
+    </linearGradient>
+
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="4"/>
+      <feOffset dx="0" dy="2" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Play button circle -->
+  <circle cx="256" cy="220" r="110" fill="white" opacity="0.95" filter="url(#shadow)"/>
+
+  <!-- Play triangle -->
+  <path d="M 230 170 L 230 270 L 310 220 Z" fill="#ff0000"/>
+
+  <!-- Music note integrated with play -->
+  <g transform="translate(290, 260)" filter="url(#shadow)">
+    <!-- Note stem -->
+    <rect x="0" y="-20" width="16" height="100" rx="8" fill="white"/>
+
+    <!-- Note head -->
+    <ellipse cx="8" cy="88" rx="32" ry="24" fill="white"/>
+
+    <!-- Second note head (eighth note) -->
+    <ellipse cx="8" cy="68" rx="28" ry="20" fill="white"/>
+
+    <!-- Orange accent on note -->
+    <path d="M 8 -20 Q 60 0, 80 -30 Q 85 -40, 78 -45 Q 50 -20, 16 -20 Z" fill="#f59e0b"/>
+  </g>
+
+  <!-- Download arrow accent -->
+  <g transform="translate(150, 340)" opacity="0.9">
+    <path d="M 30 0 L 30 40 L 10 40 L 40 70 L 70 40 L 50 40 L 50 0 Z" fill="white" filter="url(#shadow)"/>
+    <path d="M 30 8 L 30 40 L 18 40 L 40 62 L 62 40 L 50 40 L 50 8 Z" fill="#f59e0b"/>
+  </g>
+
+  <!-- Subtle waveform background pattern -->
+  <g opacity="0.1">
+    <path d="M 80 450 Q 120 430, 160 450 T 240 450 T 320 450 T 400 450 T 480 450"
+          stroke="white" stroke-width="3" fill="none"/>
+    <path d="M 80 470 Q 120 455, 160 470 T 240 470 T 320 470 T 400 470 T 480 470"
+          stroke="white" stroke-width="3" fill="none"/>
+  </g>
+</svg>
