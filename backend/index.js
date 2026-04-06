@@ -75,6 +75,18 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
+// Helper: fetch video metadata without -f best (avoids SSAP/signature issues)
+async function getVideoMetadata(ytDlp, url, opts = {}) {
+  const args = [url, '--dump-json', '--no-warnings'];
+  if (opts.flatPlaylist) {
+    args.push('--flat-playlist');
+  }
+  const stdout = await ytDlp.execPromise(args);
+  // For playlists, --dump-json outputs one JSON per line; parse the first one
+  const firstLine = stdout.split('\n').find(line => line.trim());
+  return JSON.parse(firstLine);
+}
+
 // URL validation endpoint - validates YouTube URL and returns metadata (Phase 1.3)
 app.post("/validate", speedLimiter, asyncHandler(async (req, res) => {
   const { url } = req.body;
@@ -96,7 +108,7 @@ app.post("/validate", speedLimiter, asyncHandler(async (req, res) => {
 
   try {
     // Get video metadata without downloading
-    const metadata = await ytDlp.getVideoInfo(normalizedUrl);
+    const metadata = await getVideoMetadata(ytDlp, normalizedUrl);
 
     // Extract relevant information
     const videoInfo = {
@@ -285,7 +297,7 @@ app.post("/download", speedLimiter, downloadLimiter, validateDownloadRequest, as
       const normalizedUrl = validatedUrl.replace("music.youtube.com", "www.youtube.com");
 
       progressTracker.updateStatus(downloadId, 'fetching_metadata', 'Fetching video information...');
-      const metadata = await ytDlp.getVideoInfo(normalizedUrl);
+      const metadata = await getVideoMetadata(ytDlp, normalizedUrl);
       const videoTitle = metadata.title || "downloaded";
 
       const outputName = validatedCustomName || sanitize(videoTitle);
@@ -329,8 +341,8 @@ app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRe
   const { validatedUrl, validatedFormat } = req.body;
 
   const ytDlp = new YtDlpWrap("yt-dlp");
-  const metadata = await ytDlp.getVideoInfo(validatedUrl);
-  const playlistTitle = metadata.title || "playlist";
+  const metadata = await getVideoMetadata(ytDlp, validatedUrl, { flatPlaylist: true });
+  const playlistTitle = metadata.playlist_title || metadata.title || "playlist";
   const sanitizedTitle = sanitize(playlistTitle);
 
   // Use timestamp to avoid collisions (2.3)
