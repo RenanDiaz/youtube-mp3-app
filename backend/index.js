@@ -452,7 +452,21 @@ app.post("/download/list", speedLimiter, downloadLimiter, validateMultiDownloadR
 }));
 
 // Serve downloaded files with authentication (1.3)
-app.use("/downloads", authenticateDownload, express.static(path.join(__dirname, config.download.directory)));
+// Force "Content-Disposition: attachment" so browsers download the file instead
+// of playing/opening it inline. This is required because the frontend and backend
+// run on different origins (different ports), and the HTML5 `download` attribute on
+// <a> tags is ignored for cross-origin URLs.
+app.use("/downloads", authenticateDownload, express.static(path.join(__dirname, config.download.directory), {
+  setHeaders: (res, filePath) => {
+    const filename = path.basename(filePath);
+    // RFC 5987 encoding for non-ASCII filenames, with an ASCII fallback.
+    const asciiFallback = filename.replace(/[^\x20-\x7e]/g, "_").replace(/"/g, "'");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(filename)}`
+    );
+  }
+}));
 
 // Error handlers (must be last) (2.1)
 app.use(notFoundHandler);

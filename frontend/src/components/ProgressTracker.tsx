@@ -1,6 +1,7 @@
 import React from 'react';
 import { Progress, Alert } from 'reactstrap';
 import { DownloadProgressState } from '../hooks/useDownloadProgress';
+import { API_BASE_URL } from '../config';
 import './ProgressTracker.css';
 
 interface ProgressTrackerProps {
@@ -42,7 +43,7 @@ export const ProgressTracker: React.FC<ProgressTrackerProps> = ({ state, onCompl
           <div className="mt-2">
             <p className="mb-2">{result.message}</p>
             <a
-              href={`${import.meta.env.VITE_API_BASE_URL}${result.downloadUrl}`}
+              href={`${API_BASE_URL}${result.downloadUrl}`}
               download
               className="btn btn-success btn-sm"
             >
