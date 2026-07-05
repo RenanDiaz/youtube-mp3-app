@@ -28,6 +28,10 @@ const SingleFileForm: FC = () => {
     setError(null);
     setIsSubmitting(true);
 
+    // Clear any previous completed/failed state so we start fresh
+    setDownloadId(null);
+    progressState.reset();
+
     try {
       // Post to backend to start download
       const response = await axios.post(`${API_BASE_URL}/download`, {
@@ -47,13 +51,9 @@ const SingleFileForm: FC = () => {
   };
 
   const handleComplete = () => {
-    // Reset form after a brief delay
-    setTimeout(() => {
-      setUrl("");
-      setCustomName("");
-      setDownloadId(null);
-      progressState.reset();
-    }, 3000);
+    // Keep the completed state (and its download button) visible so the user
+    // has time to click "Download File". The state is cleared when a new
+    // download is started in handleSubmit.
   };
 
   const handleRetry = () => {
