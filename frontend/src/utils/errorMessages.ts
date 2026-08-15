@@ -65,6 +65,32 @@ export const errorMessages: Record<string, ErrorInfo> = {
     icon: '🔄'
   },
 
+  // yt-dlp / YouTube specific errors
+  YOUTUBE_FORBIDDEN: {
+    title: 'YouTube Refused the Download',
+    message: 'YouTube answered "403 Forbidden" when yt-dlp asked for the audio.',
+    suggestion: 'Update yt-dlp ("yt-dlp -U"). If it keeps failing, configure cookies on the backend (YTDLP_COOKIES_FROM_BROWSER).',
+    icon: '⛔'
+  },
+  YOUTUBE_RATE_LIMITED: {
+    title: 'Rate Limited by YouTube',
+    message: 'YouTube is throttling requests coming from this network.',
+    suggestion: 'Wait a few minutes and download fewer tracks at a time.',
+    icon: '🐢'
+  },
+  BOT_CHECK_REQUIRED: {
+    title: 'YouTube Requires Sign-In',
+    message: 'YouTube asked to confirm the request is not a bot.',
+    suggestion: 'Configure cookies on the backend (YTDLP_COOKIES_FROM_BROWSER=chrome) and try again.',
+    icon: '🤖'
+  },
+  YTDLP_NOT_FOUND: {
+    title: 'yt-dlp Not Installed',
+    message: 'The backend could not run the yt-dlp binary.',
+    suggestion: 'Install yt-dlp (brew install yt-dlp) or set YTDLP_PATH in the backend .env file.',
+    icon: '🧩'
+  },
+
   // Auth errors
   UNAUTHORIZED: {
     title: 'Unauthorized',

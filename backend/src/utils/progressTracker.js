@@ -114,7 +114,8 @@ class ProgressTracker {
     this.notifyClients(downloadId, {
       type: 'error',
       downloadId,
-      error: error.message || 'Download failed'
+      error: error.message || 'Download failed',
+      code: error.code || 'DOWNLOAD_FAILED'
     });
 
     logger.error(`Download ${downloadId} failed:`, error);

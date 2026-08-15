@@ -1,4 +1,5 @@
 const validator = require('validator');
+const { normalizeYouTubeUrl, dedupeUrls } = require('./youtubeUrl');
 
 // Whitelist approach - only allow known-safe formats
 const ALLOWED_FORMATS = ['mp3', 'wav', 'flac', 'm4a', 'aac', 'opus'];
@@ -59,7 +60,9 @@ function validateYouTubeUrl(url) {
     return { valid: false, error: 'URL must be from YouTube' };
   }
 
-  return { valid: true, url: parsedUrl.href };
+  // Canonicalize before handing the URL to yt-dlp: music.youtube.com links and
+  // share tracking params (?si=...) make YouTube answer 403 far more often.
+  return { valid: true, url: normalizeYouTubeUrl(parsedUrl.href) };
 }
 
 function validateCustomFilename(filename) {
@@ -110,7 +113,8 @@ function validateUrlArray(urls) {
     validatedUrls.push(result.url);
   }
 
-  return { valid: true, urls: validatedUrls };
+  // The same track pasted twice (or as youtu.be + music.youtube.com) is one download.
+  return { valid: true, urls: dedupeUrls(validatedUrls) };
 }
 
 module.exports = {

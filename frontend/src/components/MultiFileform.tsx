@@ -3,17 +3,26 @@ import { Form, FormGroup, Label, Input, Button, Alert, Spinner } from "reactstra
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 import { FormatSelector } from "./FormatSelector";
+import { parseErrorResponse, getErrorInfo } from "../utils/errorMessages";
+
+interface FailedDownload {
+  url: string;
+  code: string;
+  message: string;
+}
 
 const MultiFileForm: FC = () => {
   const [urls, setUrls] = useState<string>("");
   const [format, setFormat] = useState<string>("mp3");
   const [message, setMessage] = useState<ReactNode>(null);
+  const [failed, setFailed] = useState<FailedDownload[]>([]);
   const [error, setError] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage(null);
+    setFailed([]);
     setError("");
     setLoading(true);
 
@@ -33,8 +42,15 @@ const MultiFileForm: FC = () => {
           </a>
         </span>
       );
+      // The backend now returns a zip with whatever it could download plus the
+      // list of URLs that failed, so show both instead of losing everything.
+      setFailed(response.data.failed || []);
     } catch (err: any) {
-      setError(err.response?.data?.error || "An error occurred");
+      const parsed = parseErrorResponse(err);
+      const info = getErrorInfo(parsed.code, parsed.message);
+      setError(
+        [parsed.message || info.message, info.suggestion].filter(Boolean).join(" ")
+      );
     } finally {
       setLoading(false);
     }
@@ -67,8 +83,20 @@ const MultiFileForm: FC = () => {
         </Button>
       </Form>
       {message && (
-        <Alert color="success" className="mt-3">
+        <Alert color={failed.length ? "warning" : "success"} className="mt-3">
           {message}
+        </Alert>
+      )}
+      {failed.length > 0 && (
+        <Alert color="warning" className="mt-3">
+          <strong>{failed.length} track(s) could not be downloaded:</strong>
+          <ul className="mb-0 mt-2 ps-3">
+            {failed.map((item) => (
+              <li key={item.url}>
+                <span className="text-break">{item.url}</span> — {item.message}
+              </li>
+            ))}
+          </ul>
         </Alert>
       )}
       {error && (
