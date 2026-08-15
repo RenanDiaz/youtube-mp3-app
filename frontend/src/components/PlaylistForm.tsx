@@ -3,6 +3,7 @@ import { Form, FormGroup, Label, Input, Button, Alert, Spinner } from "reactstra
 import axios from "axios";
 import { API_BASE_URL } from "../config";
 import { FormatSelector } from "./FormatSelector";
+import { parseErrorResponse, getErrorInfo } from "../utils/errorMessages";
 
 const PlaylistForm: FC = () => {
   const [url, setUrl] = useState<string>("");
@@ -31,7 +32,11 @@ const PlaylistForm: FC = () => {
         </span>
       );
     } catch (err: any) {
-      setError(err.response?.data?.error || "An error occurred");
+      const parsed = parseErrorResponse(err);
+      const info = getErrorInfo(parsed.code, parsed.message);
+      setError(
+        [parsed.message || info.message, info.suggestion].filter(Boolean).join(" ")
+      );
     } finally {
       setLoading(false);
     }

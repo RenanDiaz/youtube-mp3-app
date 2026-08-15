@@ -1,5 +1,4 @@
 const express = require("express");
-const YtDlpWrap = require("yt-dlp-wrap").default;
 const sanitize = require("sanitize-filename");
 const fs = require("fs").promises;
 const fsSync = require("fs");
@@ -29,8 +28,20 @@ const {
   setupUncaughtExceptionHandler,
   setupUnhandledRejectionHandler
 } = require("./src/middleware/errorHandler");
-const { DownloadError } = require("./src/utils/errors");
+const { DownloadError, ErrorCodes } = require("./src/utils/errors");
 const gracefulShutdown = require("./src/utils/shutdown");
+
+// yt-dlp helpers (403 mitigations, error classification, version check)
+const {
+  createYtDlp,
+  buildCommonArgs,
+  buildAudioDownloadArgs,
+  classifyYtDlpError,
+  summarizeFailures,
+  getYtDlpVersion,
+  logYtDlpVersion
+} = require("./src/utils/ytdlp");
+const { normalizeYouTubeUrl } = require("./src/utils/youtubeUrl");
 
 // Phase 1 UI/UX: Import progress tracker
 const progressTracker = require("./src/utils/progressTracker");
@@ -75,9 +86,32 @@ app.get("/health", (req, res) => {
   res.json({ status: "OK" });
 });
 
+// Diagnostics - first thing to check when downloads start failing with HTTP 403
+app.get("/diagnostics", asyncHandler(async (req, res) => {
+  let ytDlpInfo = { available: false, version: null, ageDays: null, stale: null };
+
+  try {
+    const { version, ageDays, stale } = await getYtDlpVersion();
+    ytDlpInfo = { available: true, version, ageDays, stale };
+  } catch (err) {
+    ytDlpInfo.error = classifyYtDlpError(err).message;
+  }
+
+  res.json({
+    ytDlp: ytDlpInfo,
+    settings: {
+      playerClients: config.ytdlp.playerClients || "(yt-dlp default)",
+      cookiesConfigured: Boolean(config.ytdlp.cookiesFromBrowser || config.ytdlp.cookiesFile),
+      sleepRequests: config.ytdlp.sleepRequests,
+      delayBetweenDownloads: config.ytdlp.delayBetweenDownloads,
+      retries: config.ytdlp.retries
+    }
+  });
+}));
+
 // Helper: fetch video metadata without -f best (avoids SSAP/signature issues)
 async function getVideoMetadata(ytDlp, url, opts = {}) {
-  const args = [url, '--dump-json', '--no-warnings'];
+  const args = [url, '--dump-json', '--no-warnings', ...buildCommonArgs()];
   if (opts.flatPlaylist) {
     args.push('--flat-playlist');
   }
@@ -101,10 +135,10 @@ app.post("/validate", speedLimiter, asyncHandler(async (req, res) => {
     });
   }
 
-  const ytDlp = new YtDlpWrap("yt-dlp");
+  const ytDlp = createYtDlp();
 
-  // Normalize URL
-  const normalizedUrl = url.replace("music.youtube.com", "www.youtube.com");
+  // Normalize URL (music.youtube.com -> www.youtube.com, drop tracking params)
+  const normalizedUrl = normalizeYouTubeUrl(url);
 
   try {
     // Get video metadata without downloading
@@ -134,21 +168,8 @@ app.post("/validate", speedLimiter, asyncHandler(async (req, res) => {
   } catch (err) {
     logger.error(`URL validation failed:`, err);
 
-    // Determine error type
-    const errorMessage = err.message || '';
-    let code = 'DOWNLOAD_FAILED';
-    let message = 'Failed to validate URL';
-
-    if (errorMessage.includes('not available') || errorMessage.includes('private')) {
-      code = 'VIDEO_UNAVAILABLE';
-      message = 'This video is unavailable, private, or restricted';
-    } else if (errorMessage.includes('network') || errorMessage.includes('timeout')) {
-      code = 'NETWORK_ERROR';
-      message = 'Network error occurred while validating URL';
-    } else if (errorMessage.includes('format')) {
-      code = 'INVALID_URL';
-      message = 'Invalid YouTube URL format';
-    }
+    // Map the raw yt-dlp output to a stable code + actionable message
+    const { code, message } = classifyYtDlpError(err);
 
     res.status(400).json({
       success: false,
@@ -291,10 +312,11 @@ app.post("/download", speedLimiter, downloadLimiter, validateDownloadRequest, as
   // Continue download in background
   (async () => {
     try {
-      const ytDlp = new YtDlpWrap("yt-dlp");
+      const ytDlp = createYtDlp();
 
-      // Normalize URL to avoid youtube music issue
-      const normalizedUrl = validatedUrl.replace("music.youtube.com", "www.youtube.com");
+      // Already normalized by the validator, but keep it explicit for URLs that
+      // reach this handler from elsewhere.
+      const normalizedUrl = normalizeYouTubeUrl(validatedUrl);
 
       progressTracker.updateStatus(downloadId, 'fetching_metadata', 'Fetching video information...');
       const metadata = await getVideoMetadata(ytDlp, normalizedUrl);
@@ -305,14 +327,12 @@ app.post("/download", speedLimiter, downloadLimiter, validateDownloadRequest, as
 
       logger.info(`Starting download ${downloadId}: ${videoTitle} as ${validatedFormat}`);
 
-      // Execute download with progress tracking
-      const args = [
-        normalizedUrl,
-        "-x",
-        "--audio-format", validatedFormat,
-        "-o", outputFile,
-        "--newline" // Force progress on new lines for easier parsing
-      ];
+      // Execute download with progress tracking. The output path is exact, so
+      // yt-dlp must not rewrite the filename (the download token depends on it).
+      const args = buildAudioDownloadArgs(normalizedUrl, outputFile, validatedFormat, {
+        restrictFilenames: false,
+        noOverwrites: false
+      });
 
       await executeDownloadWithProgress(downloadId, ytDlp, args);
 
@@ -330,18 +350,43 @@ app.post("/download", speedLimiter, downloadLimiter, validateDownloadRequest, as
       });
 
     } catch (err) {
-      logger.error(`Download failed ${downloadId}:`, err);
-      progressTracker.failDownload(downloadId, err);
+      const { code, message, raw } = classifyYtDlpError(err);
+      logger.error(`Download failed ${downloadId}: ${message}`, { code, raw });
+      progressTracker.failDownload(downloadId, new DownloadError(message, code));
     }
   })();
 }));
+
+// Sleep helper used to pace consecutive downloads (avoids YouTube rate limiting)
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Counts the files produced by a download so we never zip an empty folder
+async function countFiles(dirPath) {
+  try {
+    const files = await fs.readdir(dirPath);
+    return files.length;
+  } catch (err) {
+    return 0;
+  }
+}
 
 // Playlist download endpoint with full security and error handling (2.3 - race conditions fixed)
 app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRequest, asyncHandler(async (req, res) => {
   const { validatedUrl, validatedFormat } = req.body;
 
-  const ytDlp = new YtDlpWrap("yt-dlp");
-  const metadata = await getVideoMetadata(ytDlp, validatedUrl, { flatPlaylist: true });
+  const ytDlp = createYtDlp();
+
+  let metadata;
+  try {
+    metadata = await getVideoMetadata(ytDlp, validatedUrl, { flatPlaylist: true });
+  } catch (err) {
+    const { code, message, raw } = classifyYtDlpError(err);
+    logger.error(`Failed to read playlist metadata: ${message}`, { code, raw });
+    throw new DownloadError(`Failed to read playlist: ${message}`, code);
+  }
+
   const playlistTitle = metadata.playlist_title || metadata.title || "playlist";
   const sanitizedTitle = sanitize(playlistTitle);
 
@@ -355,6 +400,8 @@ app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRe
 
   const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
 
+  // "--yes-playlist" because the URL is a playlist on purpose here, and
+  // "--ignore-errors" so a single blocked track does not abort the whole playlist.
   const args = [
     validatedUrl,
     "-o",
@@ -362,19 +409,43 @@ app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRe
     "-x",
     "--audio-format",
     validatedFormat,
+    "--yes-playlist",
+    "--ignore-errors",
     "--restrict-filenames",
     "--no-overwrites",
     "--continue",
+    ...buildCommonArgs()
   ];
 
   logger.info(`Starting playlist download: ${playlistTitle}`);
 
+  let downloadError = null;
   try {
     await ytDlp.execPromise(args);
     logger.info(`Playlist download complete: ${playlistTitle}`);
   } catch (err) {
-    logger.error(`Playlist download failed: ${err.message}`);
-    throw new DownloadError(`Failed to download playlist: ${err.message}`);
+    // With --ignore-errors yt-dlp still exits non-zero when some tracks failed,
+    // so check what actually landed on disk before giving up.
+    downloadError = classifyYtDlpError(err);
+    logger.error(`Playlist download reported errors: ${downloadError.message}`, {
+      code: downloadError.code,
+      raw: downloadError.raw
+    });
+  }
+
+  const downloadedCount = await countFiles(outputDir);
+
+  if (downloadedCount === 0) {
+    await cleanupDirectory(outputDir);
+    const { code, message } = downloadError || {
+      code: ErrorCodes.DOWNLOAD_FAILED,
+      message: "yt-dlp did not download any track"
+    };
+    throw new DownloadError(`Failed to download playlist: ${message}`, code);
+  }
+
+  if (downloadError) {
+    logger.warn(`Playlist ${playlistTitle}: ${downloadedCount} track(s) downloaded, some failed`);
   }
 
   // Create zip file
@@ -389,9 +460,13 @@ app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRe
   const token = generateDownloadToken(filename);
 
   res.json({
-    message: "Playlist download complete",
+    message: downloadError
+      ? `Playlist partially downloaded (${downloadedCount} track(s), some failed: ${downloadError.message})`
+      : `Playlist download complete (${downloadedCount} track(s))`,
     file: filename,
-    downloadUrl: `/downloads/${filename}?token=${token}`
+    downloadUrl: `/downloads/${filename}?token=${token}`,
+    downloaded: downloadedCount,
+    partial: Boolean(downloadError)
   });
 }));
 
@@ -399,7 +474,7 @@ app.post("/download/playlist", speedLimiter, downloadLimiter, validatePlaylistRe
 app.post("/download/list", speedLimiter, downloadLimiter, validateMultiDownloadRequest, asyncHandler(async (req, res) => {
   const { validatedUrls, validatedFormat } = req.body;
 
-  const ytDlp = new YtDlpWrap("yt-dlp");
+  const ytDlp = createYtDlp();
 
   // Use timestamp to avoid collisions (2.3)
   const timestamp = Date.now();
@@ -411,27 +486,46 @@ app.post("/download/list", speedLimiter, downloadLimiter, validateMultiDownloadR
 
   const outputFile = path.resolve(outputDir, "%(title)s.%(ext)s");
 
-  const args = [
-    ...validatedUrls,
-    "-o",
-    outputFile,
-    "-x",
-    "--audio-format",
-    validatedFormat,
-    "--restrict-filenames",
-    "--no-overwrites",
-    "--continue",
-  ];
-
   logger.info(`Starting multi-download: ${validatedUrls.length} URLs`);
 
-  try {
-    await ytDlp.execPromise(args);
-    logger.info(`Multi-download complete: ${validatedUrls.length} URLs`);
-  } catch (err) {
-    logger.error(`Multi-download failed: ${err.message}`);
-    throw new DownloadError(`Failed to download list: ${err.message}`);
+  // One yt-dlp process per URL: a single blocked track (403, private video, ...)
+  // used to kill the whole batch and leave the user with nothing.
+  const succeeded = [];
+  const failed = [];
+
+  for (const [index, url] of validatedUrls.entries()) {
+    const args = buildAudioDownloadArgs(url, outputFile, validatedFormat);
+
+    try {
+      // Per-track timeout so one stuck download cannot hang the whole request
+      await ytDlp.execPromise(args, { timeout: config.ytdlp.timeout });
+      succeeded.push(url);
+      logger.info(`Downloaded ${index + 1}/${validatedUrls.length}: ${url}`);
+    } catch (err) {
+      const { code, message, raw } = classifyYtDlpError(err);
+      failed.push({ url, code, message });
+      logger.error(`Failed ${index + 1}/${validatedUrls.length} (${url}): ${message}`, { code, raw });
+    }
+
+    // Pace the batch so YouTube does not treat it as scraping
+    if (index < validatedUrls.length - 1 && config.ytdlp.delayBetweenDownloads > 0) {
+      await delay(config.ytdlp.delayBetweenDownloads);
+    }
   }
+
+  const downloadedCount = await countFiles(outputDir);
+
+  if (downloadedCount === 0) {
+    await cleanupDirectory(outputDir);
+    const { code, message } = summarizeFailures(failed);
+    logger.error(`Multi-download failed: 0/${validatedUrls.length} downloaded (${code})`);
+    throw new DownloadError(
+      `None of the ${validatedUrls.length} URLs could be downloaded. ${message}`,
+      code
+    );
+  }
+
+  logger.info(`Multi-download finished: ${succeeded.length}/${validatedUrls.length} URLs`);
 
   // Create zip file
   const zipFilePath = path.resolve(__dirname, config.download.directory, `${uniqueDir}.zip`);
@@ -445,9 +539,15 @@ app.post("/download/list", speedLimiter, downloadLimiter, validateMultiDownloadR
   const token = generateDownloadToken(filename);
 
   res.json({
-    message: "Multiple downloads complete",
+    message: failed.length
+      ? `Downloaded ${succeeded.length} of ${validatedUrls.length} tracks (${failed.length} failed)`
+      : `Downloaded ${succeeded.length} of ${validatedUrls.length} tracks`,
     file: filename,
-    downloadUrl: `/downloads/${filename}?token=${token}`
+    downloadUrl: `/downloads/${filename}?token=${token}`,
+    total: validatedUrls.length,
+    succeeded: succeeded.length,
+    partial: failed.length > 0,
+    failed
   });
 }));
 
@@ -476,6 +576,9 @@ app.use(errorHandler);
 const server = app.listen(config.port, config.host, async () => {
   logger.info(`Backend running on http://${config.host}:${config.port}`);
   logger.info(`Environment: ${config.env}`);
+
+  // Surface an outdated/missing yt-dlp at boot instead of at the first HTTP 403
+  await logYtDlpVersion();
 
   // Create downloads folder if it doesn't exist
   const downloadsDir = path.resolve(__dirname, config.download.directory);

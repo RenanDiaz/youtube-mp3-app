@@ -229,11 +229,27 @@ Download multiple YouTube videos as audio files in a ZIP archive.
 }
 ```
 
+Each URL is downloaded by its own `yt-dlp` process, so one blocked or private
+track no longer aborts the whole batch. The ZIP contains everything that could be
+downloaded and the response lists what failed. The request only fails (500) when
+*no* track could be downloaded.
+
 **Response:**
 ```json
 {
-  "message": "Multiple downloads complete",
-  "file": "multiple-downloads.zip"
+  "message": "Downloaded 18 of 20 tracks (2 failed)",
+  "file": "multiple-1786753104087.zip",
+  "downloadUrl": "/downloads/multiple-1786753104087.zip?token=...",
+  "total": 20,
+  "succeeded": 18,
+  "partial": true,
+  "failed": [
+    {
+      "url": "https://www.youtube.com/watch?v=VIDEO_ID",
+      "code": "YOUTUBE_FORBIDDEN",
+      "message": "YouTube rejected the request (HTTP 403). ..."
+    }
+  ]
 }
 ```
 
@@ -270,6 +286,79 @@ curl -O http://localhost:5001/downloads/my-audio-file.mp3
 ```
 
 **Note:** Files are cleared when the server restarts.
+
+---
+
+### Diagnostics
+
+**GET** `/diagnostics`
+
+Reports the yt-dlp version, how old it is, and which anti-403 settings are active.
+This is the first thing to check when downloads start failing.
+
+```bash
+curl http://localhost:5001/diagnostics
+```
+
+```json
+{
+  "ytDlp": { "available": true, "version": "2026.07.04", "ageDays": 42, "stale": false },
+  "settings": {
+    "playerClients": "(yt-dlp default)",
+    "cookiesConfigured": false,
+    "sleepRequests": 1,
+    "delayBetweenDownloads": 1500,
+    "retries": 5
+  }
+}
+```
+
+---
+
+## ⛔ Troubleshooting `HTTP Error 403: Forbidden`
+
+`ERROR: unable to download video data: HTTP Error 403: Forbidden` comes from
+YouTube, not from this app: YouTube refused to serve the media to yt-dlp. What the
+backend does about it:
+
+- **URLs are canonicalized** before reaching yt-dlp. `music.youtube.com` links are
+  rewritten to `www.youtube.com`, `youtu.be/<id>` becomes a watch URL, and tracking
+  params (`?si=`, `?pp=`, `?feature=`) are stripped. YouTube Music URLs use a
+  different InnerTube client that gets blocked much more often.
+- **Downloads are isolated and paced**: one process per track, `--sleep-requests`
+  between HTTP requests and a delay between tracks.
+- **Failures are per track**: a 403 on one video no longer discards the other 19.
+
+When 403s still happen, in order of effectiveness:
+
+1. **Update yt-dlp** — by far the most common cause. YouTube changes break older
+   binaries; the server logs a warning at startup when the binary is more than 45
+   days old.
+   ```bash
+   yt-dlp -U            # or: brew upgrade yt-dlp / pip install -U yt-dlp
+   ```
+2. **Add cookies** from a logged-in browser (fixes 403 and "Sign in to confirm
+   you're not a bot"):
+   ```bash
+   YTDLP_COOKIES_FROM_BROWSER=chrome   # or firefox, safari, brave, edge...
+   # or export a cookies.txt and use:
+   YTDLP_COOKIES_FILE=./cookies.txt
+   ```
+   Close the browser first — Chrome locks its cookie database while running.
+3. **Change the impersonated client** if the default ones are being rejected:
+   ```bash
+   YTDLP_PLAYER_CLIENTS=tv,web_safari
+   ```
+4. **Slow down** if the errors look like rate limiting (HTTP 429, or 403 only on
+   large batches):
+   ```bash
+   YTDLP_SLEEP_REQUESTS=2
+   YTDLP_DELAY_BETWEEN_DOWNLOADS_MS=4000
+   ```
+5. **Check for a VPN/proxy** — datacenter IPs are blocked aggressively by YouTube.
+
+Error codes returned by the API for these cases: `YOUTUBE_FORBIDDEN`,
+`YOUTUBE_RATE_LIMITED`, `BOT_CHECK_REQUIRED`, `YTDLP_NOT_FOUND`.
 
 ---
 

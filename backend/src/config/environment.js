@@ -18,7 +18,17 @@ const envSchema = Joi.object({
   RATE_LIMIT_MAX_REQUESTS: Joi.number().default(10),
   LOG_LEVEL: Joi.string().valid('error', 'warn', 'info', 'debug').default('info'),
   LOG_FILE: Joi.string().default('./logs/app.log'),
-  DOWNLOAD_TOKEN_EXPIRY_MS: Joi.number().default(300000)
+  DOWNLOAD_TOKEN_EXPIRY_MS: Joi.number().default(300000),
+  // yt-dlp behaviour (mitigations for HTTP 403 / bot checks)
+  YTDLP_PATH: Joi.string().default('yt-dlp'),
+  YTDLP_RETRIES: Joi.number().default(5),
+  YTDLP_SOCKET_TIMEOUT: Joi.number().default(30),
+  YTDLP_SLEEP_REQUESTS: Joi.number().default(1),
+  YTDLP_DELAY_BETWEEN_DOWNLOADS_MS: Joi.number().default(1500),
+  YTDLP_PLAYER_CLIENTS: Joi.string().allow('').default(''),
+  YTDLP_COOKIES_FROM_BROWSER: Joi.string().allow('').default(''),
+  YTDLP_COOKIES_FILE: Joi.string().allow('').default(''),
+  YTDLP_USER_AGENT: Joi.string().allow('').default('')
 }).unknown();
 
 const { error, value: envVars } = envSchema.validate(process.env);
@@ -56,6 +66,18 @@ const config = {
   },
   security: {
     tokenExpiry: envVars.DOWNLOAD_TOKEN_EXPIRY_MS
+  },
+  ytdlp: {
+    binary: envVars.YTDLP_PATH,
+    retries: envVars.YTDLP_RETRIES,
+    socketTimeout: envVars.YTDLP_SOCKET_TIMEOUT,
+    sleepRequests: envVars.YTDLP_SLEEP_REQUESTS,
+    delayBetweenDownloads: envVars.YTDLP_DELAY_BETWEEN_DOWNLOADS_MS,
+    playerClients: envVars.YTDLP_PLAYER_CLIENTS,
+    cookiesFromBrowser: envVars.YTDLP_COOKIES_FROM_BROWSER,
+    cookiesFile: envVars.YTDLP_COOKIES_FILE,
+    userAgent: envVars.YTDLP_USER_AGENT,
+    timeout: envVars.DOWNLOAD_TIMEOUT_MS
   }
 };
 
