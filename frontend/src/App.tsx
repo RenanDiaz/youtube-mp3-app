@@ -16,8 +16,14 @@ enum View {
   Multi = "multi",
 }
 
+/** Initial tab from the URL (`?view=playlist`), used by the PWA shortcuts in manifest.json. */
+const getInitialView = (): View => {
+  const requested = new URLSearchParams(window.location.search).get("view");
+  return Object.values(View).includes(requested as View) ? (requested as View) : View.Single;
+};
+
 const App: FC = () => {
-  const [selectedView, setSelectedView] = useState<View>(View.Single);
+  const [selectedView, setSelectedView] = useState<View>(getInitialView);
 
   useEffect(() => {
     document.body.setAttribute("data-bs-theme", "dark");

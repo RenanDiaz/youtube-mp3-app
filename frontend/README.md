@@ -113,11 +113,14 @@ Generates test coverage report in `coverage/` directory.
 ```
 frontend/
 ├── public/               # Static assets (served at root)
-│   ├── favicon.ico
-│   ├── logo192.png
-│   ├── logo512.png
-│   ├── manifest.json
+│   ├── favicon.svg / favicon.ico / favicon-*.png
+│   ├── apple-touch-icon.png
+│   ├── icon-192.png, icon-512.png (+ -maskable variants)
+│   ├── og-image.png      # Social preview (Open Graph / Twitter)
+│   ├── manifest.json     # PWA manifest
 │   └── robots.txt
+├── generate-icons.js     # Generates every icon above (npm run icons:generate)
+├── ICONS.md              # Icon & SEO documentation
 ├── src/
 │   ├── components/       # React components
 │   │   ├── SingleFileForm.tsx
@@ -261,9 +264,9 @@ build/
 │   ├── bootstrap-vendor-[hash].js  # Bootstrap + Reactstrap
 │   ├── index-[hash].js             # Your app code
 │   └── index-[hash].css            # Styles
-├── favicon.ico
-├── logo192.png
-├── logo512.png
+├── favicon.svg / favicon.ico / favicon-*.png
+├── apple-touch-icon.png
+├── icon-*.png / og-image.png
 ├── manifest.json
 └── robots.txt
 ```

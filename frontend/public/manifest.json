@@ -1,34 +1,112 @@
 {
+  "id": "/",
+  "name": "YouTube Audio Downloader",
   "short_name": "YT Audio",
-  "name": "YouTube to Audio Downloader",
-  "description": "Convert YouTube videos to MP3, WAV, M4A, and FLAC",
+  "description": "Convert YouTube videos and playlists to MP3, WAV, M4A or FLAC and download them in seconds.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone"
+  ],
+  "orientation": "portrait-primary",
+  "theme_color": "#1e1e1e",
+  "background_color": "#0f0f0f",
+  "categories": [
+    "music",
+    "utilities",
+    "productivity"
+  ],
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "favicon.svg",
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/favicon.svg",
       "sizes": "any",
       "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ],
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#ff0000",
-  "background_color": "#000000"
+  "screenshots": [
+    {
+      "src": "/screenshots/desktop.png",
+      "sizes": "1280x800",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Convert a single YouTube video to audio"
+    },
+    {
+      "src": "/screenshots/mobile.png",
+      "sizes": "860x1864",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Download a whole playlist and pick the audio format"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Download a single video",
+      "short_name": "Single",
+      "description": "Convert one YouTube video to audio",
+      "url": "/?view=single",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Download a playlist",
+      "short_name": "Playlist",
+      "description": "Convert a whole YouTube playlist to audio",
+      "url": "/?view=playlist",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Download multiple videos",
+      "short_name": "Multi",
+      "description": "Convert several YouTube URLs at once",
+      "url": "/?view=multi",
+      "icons": [
+        {
+          "src": "/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }
