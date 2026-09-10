@@ -1,18 +1,24 @@
-<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="32" height="32" rx="7" fill="#ff0000"/>
-
-  <!-- Play button -->
-  <circle cx="14" cy="13" r="8" fill="white"/>
-  <path d="M 12 9 L 12 17 L 18 13 Z" fill="#ff0000"/>
-
-  <!-- Music note -->
-  <g transform="translate(20, 16)">
-    <rect x="0" y="0" width="2.5" height="12" rx="1.25" fill="white"/>
-    <ellipse cx="1.25" cy="12" rx="3" ry="2.5" fill="white"/>
-    <path d="M 1.25 0 Q 6 1, 8 -1 Q 8.5 -1.5, 8 -2 Q 5 0, 2.5 0 Z" fill="#f59e0b"/>
-  </g>
-
-  <!-- Download arrow -->
-  <path d="M 8 22 L 8 25 L 6 25 L 9 28 L 12 25 L 10 25 L 10 22 Z" fill="white" opacity="0.9"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  
+    <defs>
+      <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ff1f1f"/>
+        <stop offset="1" stop-color="#b80000"/>
+      </linearGradient>
+      <radialGradient id="glow" cx="0.3" cy="0.2" r="0.9">
+        <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+        <stop offset="0.6" stop-color="#ffffff" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <rect width="512" height="512" rx="116" fill="url(#bg)"/>
+    <rect width="512" height="512" rx="116" fill="url(#glow)"/>
+  
+    <g transform="translate(230 256) scale(1) translate(-256 -256)"
+       fill="none" stroke="#ffffff" stroke-linecap="round" stroke-linejoin="round">
+      <!-- play triangle (stroke gives the rounded corners) -->
+      <path d="M170 176 L170 336 L312 256 Z" fill="#ffffff" stroke-width="44"/>
+      <!-- sound waves -->
+      <path d="M352 190 A94 94 0 0 1 352 322" stroke-width="40"/>
+      <path d="M400 142 A162 162 0 0 1 400 370" stroke-width="40" stroke-opacity="0.85"/>
+    </g>
 </svg>

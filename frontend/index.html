@@ -2,21 +2,82 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- SVG favicon for modern browsers -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+
+    <!-- Primary SEO -->
+    <title>YouTube Audio Downloader – Convert YouTube to MP3, WAV, M4A & FLAC</title>
+    <meta
+      name="description"
+      content="Free YouTube to audio converter. Download single videos, playlists or multiple URLs as high-quality MP3, WAV, M4A or FLAC files with real-time progress."
+    />
+    <meta name="application-name" content="YouTube Audio Downloader" />
+    <meta name="author" content="Renan Diaz" />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="theme-color" content="#1e1e1e" />
+
+    <!-- Icons -->
+    <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <!-- Fallback ICO for older browsers -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#ff0000" />
-    <meta name="description" content="YouTube to Audio Downloader - Convert YouTube videos to MP3, WAV, M4A, and FLAC" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
 
-    <!-- Apple Touch Icon -->
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
-
-    <!-- PWA Manifest -->
+    <!-- PWA -->
     <link rel="manifest" href="/manifest.json" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="YT Audio" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 
-    <title>YouTube to Audio Downloader</title>
+    <!-- Open Graph (Facebook, LinkedIn, WhatsApp, Slack…) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="YouTube Audio Downloader" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:title" content="YouTube Audio Downloader – Convert YouTube to MP3, WAV, M4A & FLAC" />
+    <meta
+      property="og:description"
+      content="Download single videos, playlists or multiple URLs as high-quality MP3, WAV, M4A or FLAC files with real-time progress."
+    />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="YouTube Audio Downloader logo: a play button emitting sound waves" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="YouTube Audio Downloader – Convert YouTube to MP3, WAV, M4A & FLAC" />
+    <meta
+      name="twitter:description"
+      content="Download single videos, playlists or multiple URLs as high-quality MP3, WAV, M4A or FLAC files with real-time progress."
+    />
+    <meta name="twitter:image" content="/og-image.png" />
+    <meta name="twitter:image:alt" content="YouTube Audio Downloader logo: a play button emitting sound waves" />
+
+    <!-- Structured data -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "YouTube Audio Downloader",
+        "alternateName": "YT Audio",
+        "description": "Convert YouTube videos and playlists to MP3, WAV, M4A or FLAC and download them in seconds.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "image": "/og-image.png",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "featureList": [
+          "Single video download with real-time progress",
+          "Full playlist download as ZIP",
+          "Batch download of multiple URLs",
+          "MP3, WAV, M4A and FLAC output"
+        ],
+        "author": { "@type": "Person", "name": "Renan Diaz", "url": "https://github.com/RenanDiaz" },
+        "codeRepository": "https://github.com/RenanDiaz/youtube-mp3-app"
+      }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
